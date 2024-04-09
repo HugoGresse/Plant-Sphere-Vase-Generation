@@ -1,8 +1,8 @@
-import * as THREE from "three";
-import {SUBTRACTION, Brush, Evaluator} from 'three-bvh-csg';
-import {BufferGeometry, Mesh, MeshStandardMaterial} from "three";
+import {SUBTRACTION, Brush, Evaluator, Operation, OperationGroup} from 'three-bvh-csg';
+import {BufferGeometry, CylinderGeometry, Mesh, MeshStandardMaterial, SphereGeometry} from "three";
 import {Settings} from "./settings.js";
-import {setupGUI} from "./GUI.js";
+import { setupGUI} from "./GUI.js";
+import {getSpheres} from "./src/getSpheres.js";
 
 const MaterialConstructor = () => new MeshStandardMaterial({
     color: Settings.color,
@@ -22,51 +22,23 @@ const MaterialConstructor = () => new MeshStandardMaterial({
 const Material = MaterialConstructor();
 const evaluator = new Evaluator();
 
-export const removeSphereFromCylinder = (cylinder, sphere) => {
-    const cylinderBrush = new Brush(cylinder.geometry, Material);
-    const sphereBrush = new Brush(sphere.geometry, Material);
-    sphereBrush.position.set(sphere.position.x, sphere.position.y, sphere.position.z);
+export const generateCylinder = (scene, settings = Settings) => {
+    evaluator.attributes = [ 'position', 'normal' ];
+    evaluator.useGroups = true;
 
-    cylinderBrush.updateMatrixWorld();
-    sphereBrush.updateMatrixWorld();
+    console.log("render, settings", settings)
+    const cylinderGeometry = new CylinderGeometry(settings.cylinderWidth, settings.cylinderWidth, settings.cylinderHeight, settings.cylinderSegment);
 
-    const resultObject = new Mesh(new BufferGeometry(), Material);
+    const sphereGeometry = new SphereGeometry(settings.sphereRadius, settings.sphereSegment, settings.sphereSegment);
 
-    evaluator.evaluate(cylinderBrush, sphereBrush, SUBTRACTION, resultObject);
+    const root = new Operation(cylinderGeometry, Material);
 
-    return resultObject;
-}
+    const holes = getSpheres(sphereGeometry, Material, settings);
+    const operationGroup = new OperationGroup()
+    operationGroup.add(...holes);
 
-export const generateCylinder = (scene) => {
-    const cylinderGeometry = new THREE.CylinderGeometry(Settings.cylinderWidth, Settings.cylinderWidth, Settings.cylinderHeight, Settings.cylinderSegment);
-    const cylinderMaterial = Material;
-    const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+    root.add(operationGroup);
 
-    const sphereGeometry = new THREE.SphereGeometry(Settings.sphereRadius, Settings.sphereSegment, Settings.sphereSegment);
-    const sphereMaterial = Material;
 
-    let object = cylinder;
-
-    const radiusOffset = Settings.verticalRadiusOffset;
-
-    for(let j = 0; j < Settings.layerCount; j++){
-        console.log("new ", j)
-
-        for (let i = 0; i < Settings.sphereCount; i++) {
-            const angle = (i / Settings.sphereCount) * 2 * Math.PI + radiusOffset * j
-            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-            const x = Settings.cylinderWidth * Math.cos(angle) * Settings.sphereOffset
-            const z = Settings.cylinderWidth * Math.sin(angle) * Settings.sphereOffset
-
-            const y = Settings.cylinderHeight / Settings.layerCount * j * 2 * Settings.verticalLayerOffset - Settings.cylinderHeight / 2 - Settings.bottomOffset;
-
-            sphere.position.set(x, y, z);
-            object = removeSphereFromCylinder(object, sphere);
-        }
-
-    }
-
-    scene.add(object);
-
-    setupGUI(cylinder, sphereGeometry)
+    setupGUI(scene, root, holes, evaluator, Material, cylinderGeometry, generateCylinder)
 }
