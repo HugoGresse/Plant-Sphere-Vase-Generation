@@ -1,9 +1,7 @@
-import './style.css'
+import '../style.css'
 import {threeSetup} from "./threeSetup.js";
-import {generateCylinder} from "./cylinder.js";
-import {STLExporter, TransformControls} from "three/addons";
-import {GUI} from "three/addons/libs/lil-gui.module.min.js";
-import {Settings} from "./settings.js";
+import {STLExporter} from "three/addons";
+import {VaseRenderer} from "./VaseRenderer.js";
 
 document.querySelector('#app').innerHTML = `
   <div>
@@ -12,9 +10,10 @@ document.querySelector('#app').innerHTML = `
   </div>
 `
 
-const {scene, camera, renderer, controls, cylinder, sphere} = threeSetup();
+const {scene, camera, renderer, controls} = threeSetup();
 
-generateCylinder(scene);
+new VaseRenderer(scene, camera, renderer, controls)
+    .update()
 
 document.getElementById('export').addEventListener('click', () => {
     console.log("export")
@@ -31,7 +30,7 @@ document.getElementById('export').addEventListener('click', () => {
 });
 
 function animate() {
-    scene.rotation.y += 0.01;
+    scene.rotation.y += 0.002;
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
 }

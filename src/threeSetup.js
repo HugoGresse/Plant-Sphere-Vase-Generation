@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import {OrbitControls, RoomEnvironment} from "three/addons";
-import {Settings} from "./settings.js";
+import {Settings} from "../settings.js";
 
 export const threeSetup = () => {
     const scene = new THREE.Scene();
@@ -11,6 +11,7 @@ export const threeSetup = () => {
     renderer.setSize( window.innerWidth, window.innerHeight );
 
     scene.add( new THREE.AmbientLight( 0x222222 ) );
+
     const light = new THREE.DirectionalLight( 0x00ffff, Settings.lightIntensity );
     light.position.set( Settings.cylinderWidth * 20,Settings.cylinderWidth * 20,Settings.cylinderHeight * 10 );
     light.castShadow = true;
