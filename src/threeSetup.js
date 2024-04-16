@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {OrbitControls, RoomEnvironment} from "three/addons";
 import {Settings} from "../settings.js";
+import Stats from 'three/addons/libs/stats.module.js'
 
 export const threeSetup = () => {
     const scene = new THREE.Scene();
@@ -9,6 +10,9 @@ export const threeSetup = () => {
     renderer.shadowMap.enabled = true;
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight );
+
+    const stats = new Stats();
+    document.body.appendChild( stats.dom );
 
     scene.add( new THREE.AmbientLight( 0x222222 ) );
 
@@ -45,5 +49,6 @@ export const threeSetup = () => {
         camera,
         renderer,
         controls,
+        stats
     }
 }

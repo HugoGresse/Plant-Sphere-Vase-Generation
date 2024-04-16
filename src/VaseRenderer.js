@@ -13,18 +13,20 @@ export class VaseRenderer {
 
     oldSettings = null
     settings = null
+    isUpdating = false
 
-    constructor(scene, camera, renderer, controls) {
+    constructor(scene, camera, renderer, controls, stats) {
         this.scene = scene
         this.camera = camera
         this.renderer = renderer
         this.controls = controls
+        this.stats = stats
         this.settings = { ...Settings }
         this.oldSettings = { ...Settings }
 
         this.evaluator = new Evaluator()
         this.evaluator.attributes = ['position', 'normal']
-        this.evaluator.useGroups = true
+        this.evaluator.useGroups = false
 
         this.material = getMaterial(this.settings)
 
@@ -33,47 +35,71 @@ export class VaseRenderer {
     }
 
     setupGUI() {
+        const base = this.gui.addFolder('base')
+
+        const innerUpdate = () => {
+            if (this.isUpdating) return
+            this.update()
+        }
+
+        base.add(Settings, 'cylinderSegment', 12, 100).name('segments').onChange(v => {
+            this.settings = { ...Settings, cylinderSegment: v }
+            innerUpdate()
+        })
+        base.add(Settings, 'sphereSegment', 12, 100).name('segments').onChange(v => {
+            this.settings = { ...Settings, sphereSegment: v }
+            innerUpdate()
+        })
+
         const cylinderFolder = this.gui.addFolder('Cylinder')
-        cylinderFolder.add(Settings, 'cylinderWidth', 1, 100).name('cylinderWidth').onChange(v => {
-            console.log('cylinderWidth', v)
+        cylinderFolder.add(Settings, 'cylinderWidth', 20, 40).name('cylinderWidth').onChange(v => {
             this.settings = { ...Settings, cylinderWidth: v }
             // TODO : https://github.com/josdirksen/learning-threejs/blob/master/chapter-05/06-basic-3d-geometries-cylinder.html#L65
-
-            console.log('generateCylinder', this.settings.cylinderWidth, this.oldSettings.cylinderWidth)
-
-            this.update()
+            innerUpdate()
         })
 
         const sphereFolder = this.gui.addFolder('sphere')
-        sphereFolder.add(Settings, 'sphereRadius', 1, 100).name('sphereRadius').onChange(v => {
+        sphereFolder.add(Settings, 'sphereRadius', 20, 100).name('sphereRadius').onChange(v => {
             console.log('sphereRadius', v)
 
-            // for(let hole of holes){
-            //     hole.geometry.parameters.radius = v
-            // }
+            this.settings = { ...Settings, sphereRadius: v }
+            innerUpdate()
+        })
+        sphereFolder.add(Settings, 'sphereOffset', 1, 3).name('sphereOffset').onChange(v => {
+            console.log('sphereOffset', v)
+
+            this.settings = { ...Settings, sphereOffset: v }
+            innerUpdate()
+        })
+        sphereFolder.add(Settings, 'sphereCount', 4, 20).name('sphereCount').onChange(v => {
+            console.log('sphereCount', v)
+
+            this.settings = { ...Settings, sphereCount: v }
+            innerUpdate()
+        })
+        sphereFolder.add(Settings, 'verticalLayerOffset', 1, 3).name('verticalLayerOffset').onChange(v => {
+            console.log('verticalLayerOffset', v)
+
+            this.settings = { ...Settings, verticalLayerOffset: v }
+            innerUpdate()
+        })
+        sphereFolder.add(Settings, 'verticalRadiusOffset', 1, 2).name('verticalRadiusOffset').onChange(v => {
+            console.log('verticalRadiusOffset', v)
+
+            this.settings = { ...Settings, verticalRadiusOffset: v }
+            innerUpdate()
         })
     }
 
     generateBaseGeometries() {
-        if (!this.baseGeometry) {
-            this.baseGeometry = new CylinderGeometry(this.settings.cylinderWidth, this.settings.cylinderWidth, this.settings.cylinderHeight, this.settings.cylinderSegment)
-            this.extrusionGeometry = new SphereGeometry(this.settings.sphereRadius, this.settings.sphereSegment, this.settings.sphereSegment)
-
-        } else {
-            this.baseGeometry.dispose()
-            this.extrusionGeometry.dispose()
-            this.baseGeometry = new CylinderGeometry(this.settings.cylinderWidth, this.settings.cylinderWidth, this.settings.cylinderHeight, this.settings.cylinderSegment)
-            this.extrusionGeometry = new SphereGeometry(this.settings.sphereRadius, this.settings.sphereSegment, this.settings.sphereSegment)
-        }
+        if (this.baseGeometry) this.baseGeometry.dispose()
+        if (this.extrusionGeometry) this.extrusionGeometry.dispose()
+        this.baseGeometry = new CylinderGeometry(this.settings.cylinderWidth, this.settings.cylinderWidth, this.settings.cylinderHeight, this.settings.cylinderSegment)
+        this.extrusionGeometry = new SphereGeometry(this.settings.sphereRadius, this.settings.sphereSegment, this.settings.sphereSegment)
     }
 
     makeHolesOperations(geometry, material, settings) {
-        const didSettingsChange = Object.keys(settings).some(key => settings[key] !== this.oldSettings[key])
-
-        if (didSettingsChange) {
-            console.log('settings changed')
-            this.holes = []
-        }
+        this.holes = []
 
         if (!this.holes.length) {
             const radiusOffset = settings.verticalRadiusOffset
@@ -108,26 +134,32 @@ export class VaseRenderer {
     }
 
     update() {
+        if (this.isUpdating) return
+
+        this.isUpdating = true
         const startTime = performance.now()
         this.generateBaseGeometries()
         const endTime1 = performance.now()
-        console.log('generateBaseGeometries', endTime1 - startTime, 'ms')
+        // console.log('generateBaseGeometries', endTime1 - startTime, 'ms')
         this.makeHolesOperations(this.extrusionGeometry, this.material, this.settings)
         const endTime2 = performance.now()
-        console.log('makeHolesOperations', endTime2 - startTime, 'ms')
+        // console.log('makeHolesOperations', endTime2 - startTime, 'ms')
         const root = this.processOperations()
         const endTime3 = performance.now()
-        console.log('processOperations', endTime3 - startTime, 'ms')
+        // console.log('processOperations', endTime3 - startTime, 'ms')
 
         if (this.renderedFinalGeometry) {
             this.scene.remove(this.renderedFinalGeometry)
             this.renderedFinalGeometry.geometry.dispose()
         }
+        // TODO : use target in evaluateHierarchy?
         this.renderedFinalGeometry = this.evaluator.evaluateHierarchy(root)
         this.renderedFinalGeometry.material = this.material
         this.scene.add(this.renderedFinalGeometry)
 
-        this.oldSettings = {...this.settings}
+        this.oldSettings = { ...this.settings }
+        this.isUpdating = false
+        console.log('render done')
     }
 
 }

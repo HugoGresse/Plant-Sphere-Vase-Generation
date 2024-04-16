@@ -10,9 +10,9 @@ document.querySelector('#app').innerHTML = `
   </div>
 `
 
-const {scene, camera, renderer, controls} = threeSetup();
+const {scene, camera, renderer, controls, stats} = threeSetup();
 
-new VaseRenderer(scene, camera, renderer, controls)
+new VaseRenderer(scene, camera, renderer, controls, stats)
     .update()
 
 document.getElementById('export').addEventListener('click', () => {
@@ -33,6 +33,7 @@ function animate() {
     scene.rotation.y += 0.002;
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
+    stats.update();
 }
 
 animate();
